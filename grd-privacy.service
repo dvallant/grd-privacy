@@ -1,0 +1,12 @@
+[Unit]
+Description=GNOME Remote Desktop: blank local screen and lock local input
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/grd-privacy.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

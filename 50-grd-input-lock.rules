@@ -1,0 +1,12 @@
+// Allows __USER__ to start and stop the GNOME Remote Desktop input lock
+// without a password - and nothing else.
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.systemd1.manage-units" &&
+        subject.user == "__USER__" &&
+        /^grd-input-lock@[0-9]+\.service$/.test(action.lookup("unit") || "")) {
+        var verb = action.lookup("verb");
+        if (verb == "start" || verb == "stop") {
+            return polkit.Result.YES;
+        }
+    }
+});
