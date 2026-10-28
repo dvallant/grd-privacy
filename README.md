@@ -46,8 +46,10 @@ systemctl --user daemon-reload
 systemctl --user enable --now grd-privacy
 ```
 
-`install.sh` installs the script root-owned to `/usr/local/bin`, since it is
-executed with group `input` and must not be writable by your user. If your
+`install.sh` first checks the requirements above and aborts without changing
+anything if one is missing. It installs the script root-owned to
+`/usr/local/bin`, since it is executed with group `input` and must not be
+writable by your user. If your
 user is a member of `input`, remove it (`sudo gpasswd -d $USER input`, then
 log in again); otherwise the privilege separation is pointless.
 

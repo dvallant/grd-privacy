@@ -6,6 +6,23 @@ G="$(id -gn "$U")"
 H="$(getent passwd "$U" | cut -d: -f6)"
 cd "$(dirname "$0")"
 
+# Check dependencies before changing anything; the units use /usr/bin/python3
+ok=1
+check() {
+    /usr/bin/python3 -I -c "$1" 2>/dev/null || { echo "Missing: $2" >&2; ok=0; }
+}
+if [ -x /usr/bin/python3 ]; then
+    check 'import os; os.close(os.pidfd_open(os.getpid()))' \
+          "Python 3.9+ on Linux 5.3+ (pidfd support)"
+    check 'from gi.repository import Gio' \
+          "PyGObject (Fedora: python3-gobject, Debian/Ubuntu: python3-gi)"
+    check 'import evdev' "python-evdev (package python3-evdev)"
+else
+    echo "Missing: /usr/bin/python3" >&2
+    ok=0
+fi
+[ "$ok" = 1 ] || exit 1
+
 # Install the script root-owned: the lock service runs it with group "input",
 # so your user must not be able to modify it.
 install -o root -g root -m 0755 grd-privacy.py /usr/local/bin/grd-privacy.py
