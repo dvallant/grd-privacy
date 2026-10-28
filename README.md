@@ -30,7 +30,8 @@ switch and the video bus are never grabbed.
 ## Requirements
 
 - GNOME on Wayland with GNOME Remote Desktop
-- Python 3 with PyGObject and python-evdev
+- Linux 5.3 or newer
+- Python 3.9 or newer with PyGObject and python-evdev
   - Fedora: `sudo dnf install python3-gobject python3-evdev`
   - Debian/Ubuntu: `sudo apt install python3-gi python3-evdev`
 - systemd and polkit

@@ -27,6 +27,7 @@ Usage:
 import argparse
 import glob
 import os
+import select
 import signal
 import subprocess
 import sys
@@ -269,26 +270,39 @@ def input_available():
 
 def run_lock_only(pid, interval):
     """System service mode: lock as long as the watcher is alive."""
+    # A pidfd refers to exactly this process, so a reused PID can never
+    # keep the lock alive
+    try:
+        pidfd = os.pidfd_open(pid)
+    except OSError:
+        log(f"Watcher process {pid} does not exist")
+        sys.exit(2)
+    # Check only after opening the pidfd, so the check applies to the
+    # process the pidfd refers to
     try:
         with open(f"/proc/{pid}/cmdline", "rb") as f:
             cmdline = f.read()
     except OSError:
-        log(f"Watcher process {pid} does not exist")
-        sys.exit(2)
+        cmdline = b""
     if b"grd-privacy" not in cmdline:
         log(f"Process {pid} is not a grd-privacy watcher")
         sys.exit(2)
     if not input_available():
         sys.exit(1)
 
+    # The pidfd becomes readable as soon as the process exits
+    watcher = select.poll()
+    watcher.register(pidfd, select.POLLIN)
     lock = InputLock()
     try:
-        while os.path.exists(f"/proc/{pid}"):
+        while True:
             lock.apply()
-            time.sleep(interval)
+            if watcher.poll(int(interval * 1000)):
+                break
         log("Watcher process exited")
     finally:
         lock.release()
+        os.close(pidfd)
 
 
 # --------------------------------------------------------------------------
