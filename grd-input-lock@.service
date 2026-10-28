@@ -2,7 +2,8 @@
 Description=Local input lock for GNOME Remote Desktop (watcher PID %i)
 
 [Service]
-Type=simple
+# Ready only once the devices are grabbed, so "systemctl start" reports failures
+Type=notify
 ExecStart=/usr/bin/python3 /usr/local/bin/grd-privacy.py --lock-only --watch-pid %i
 
 # Dedicated, short-lived user that may only open input devices

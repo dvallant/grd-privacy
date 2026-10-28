@@ -29,6 +29,7 @@ import glob
 import os
 import select
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -165,7 +166,15 @@ class SystemdLock:
         self.error = False
         return True
 
+    def _running(self):
+        r = subprocess.run(["systemctl", "is-active", "--quiet", self.unit])
+        return r.returncode == 0
+
     def apply(self):
+        # The lock can still die after a successful start; start it again then
+        if self.active and not self._running():
+            log(f"Input lock {self.unit} is no longer running")
+            self.active = False
         if not self.active:
             self.active = self._ctl("start")
             if self.active:
@@ -268,6 +277,18 @@ def input_available():
     return True
 
 
+def notify(state):
+    """Minimal sd_notify(); does nothing outside of systemd."""
+    addr = os.environ.get("NOTIFY_SOCKET")
+    if not addr:
+        return
+    if addr.startswith("@"):
+        addr = "\0" + addr[1:]
+    with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as s:
+        s.connect(addr)
+        s.sendall(state.encode())
+
+
 def run_lock_only(pid, interval):
     """System service mode: lock as long as the watcher is alive."""
     # A pidfd refers to exactly this process, so a reused PID can never
@@ -295,10 +316,11 @@ def run_lock_only(pid, interval):
     watcher.register(pidfd, select.POLLIN)
     lock = InputLock()
     try:
-        while True:
+        lock.apply()
+        # Only now does "systemctl start" in the watcher return successfully
+        notify("READY=1")
+        while not watcher.poll(int(interval * 1000)):
             lock.apply()
-            if watcher.poll(int(interval * 1000)):
-                break
         log("Watcher process exited")
     finally:
         lock.release()
