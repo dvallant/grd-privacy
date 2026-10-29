@@ -6,7 +6,8 @@ session (desktop sharing on Wayland).
 Components:
   Watcher   (user service, your user, WITHOUT group "input"):
             detects Mutter RemoteDesktop sessions, blanks the screen via
-            gamma and starts/stops the input lock via systemctl.
+            gamma and starts/stops the input lock via systemctl. Locks
+            the screen when the remote session ends.
   Lock      (system service grd-input-lock@<PID>.service, DynamicUser
             with group "input"): grabs local keyboards, mice and
             touchpads and releases them as soon as the watcher process
@@ -50,6 +51,9 @@ RD_SESSIONS = "/org/gnome/Mutter/RemoteDesktop/Session"
 DC = ("org.gnome.Mutter.DisplayConfig",
       "/org/gnome/Mutter/DisplayConfig",
       "org.gnome.Mutter.DisplayConfig")
+SS = ("org.gnome.ScreenSaver",
+      "/org/gnome/ScreenSaver",
+      "org.gnome.ScreenSaver")
 
 
 def log(msg):
@@ -89,6 +93,21 @@ class Bus:
             return [n.path for n in info.nodes]
         except self.GLib.Error:
             return []
+
+    def lock_screen(self, timeout=5.0):
+        """Locks the screen and waits until the lock screen is shown."""
+        try:
+            self.call(*SS, "Lock")
+            end = time.monotonic() + timeout
+            while time.monotonic() < end:
+                (active,) = self.call(*SS, "GetActive")
+                if active:
+                    log("Screen locked")
+                    return
+                time.sleep(0.1)
+            log("Lock screen did not appear")
+        except self.GLib.Error as err:
+            log(f"Locking the screen failed: {err.message}")
 
 
 class Blanker:
@@ -335,6 +354,8 @@ def main():
     ap.add_argument("--interval", type=float, default=2.0,
                     help="check interval in seconds (default: 2)")
     ap.add_argument("--no-blank", action="store_true", help="don't blank the screen")
+    ap.add_argument("--no-lock-screen", action="store_true",
+                    help="don't lock the screen when a remote session ends")
     ap.add_argument("--input", choices=["systemd", "local", "off"],
                     default="systemd",
                     help="input lock via system service (default), "
@@ -386,7 +407,10 @@ def main():
         if lock:
             lock.apply()
 
-    def release():
+    def release(lock_screen):
+        # Lock first, so the desktop never shows up locally
+        if lock_screen and not args.no_lock_screen:
+            bus.lock_screen()
         if lock:
             lock.release()
         if blanker:
@@ -415,14 +439,14 @@ def main():
                 engage()
             elif engaged:
                 log("Remote session ended - releasing")
-                release()
+                release(lock_screen=True)
                 engaged = False
             time.sleep(args.interval)
     except KeyboardInterrupt:
         pass
     finally:
         if engaged:
-            release()
+            release(lock_screen=not args.test)
             log("Released, exiting.")
 
 

@@ -5,7 +5,8 @@
 Keeps the local screen private while someone is connected via GNOME Remote
 Desktop (desktop sharing on Wayland): the local monitors go black and local
 keyboards, mice and touchpads are locked. The remote user keeps seeing and
-controlling the desktop as usual.
+controlling the desktop as usual. When the session ends, the screen is
+locked before the local monitors come back on.
 
 ## How it works
 
@@ -63,7 +64,8 @@ grd-privacy.py --status    # list detected remote sessions
 grd-privacy.py --restore   # reset monitors stuck at black
 ```
 
-Further options for the watcher: `--interval SEC`, `--no-blank`, and
+Further options for the watcher: `--interval SEC`, `--no-blank`,
+`--no-lock-screen`, and
 `--input systemd|local|off` (`local` locks inside the watcher process and
 needs group `input`).
 
