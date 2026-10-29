@@ -44,8 +44,14 @@ Run as your desktop user via sudo:
 ```sh
 sudo ./install.sh
 systemctl --user daemon-reload
-systemctl --user enable --now grd-privacy
+systemctl --user enable grd-privacy
+systemctl --user restart grd-privacy
 ```
+
+The same steps also update an existing installation: `restart` makes the
+running watcher pick up the new script (`enable --now` would leave it
+running unchanged). The input lock service picks it up with the next remote
+session.
 
 `install.sh` first checks the requirements above and aborts without changing
 anything if one is missing. It installs the script root-owned to

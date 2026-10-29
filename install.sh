@@ -36,7 +36,8 @@ install -o "$U" -g "$G" -m 0644 grd-privacy.service "$H/.config/systemd/user/grd
 
 echo "Done. Now run as $U (without sudo):"
 echo "  systemctl --user daemon-reload"
-echo "  systemctl --user enable --now grd-privacy"
+echo "  systemctl --user enable grd-privacy"
+echo "  systemctl --user restart grd-privacy"
 if id -nG "$U" | grep -qw input; then
     echo
     echo "Note: $U is still a member of group 'input'. Remove with:"
